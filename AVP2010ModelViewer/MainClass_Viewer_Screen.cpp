@@ -29,6 +29,7 @@ extern XMMATRIX g_axBoneMatrices[128];
 extern DWORD g_loaded_anim_count;
 extern DWORD g_loaded_mdl_count;
 extern Command cmd_dump_anim;
+extern Command cmd_dump_model;
 
 // Globals
 float ScreenNear = 0.1f;
@@ -708,6 +709,7 @@ HRESULT InitDevice()
 	g_pConsole = new Console(5, 25.0f, Colors::Red, 0.5f);
 
 	g_pConsole->Add_command(&cmd_dump_anim);
+	g_pConsole->Add_command(&cmd_dump_model);
 
 	return S_OK;
 }

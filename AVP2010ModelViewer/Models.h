@@ -17,7 +17,7 @@ struct model_mat_info
 	DWORD mat_hash;
 	DWORD unk;
 	DWORD points_count;
-	DWORD some_offset;
+	DWORD some_flags; // 0 bit set is Meat? others is body chunks identification ? 
 	DWORD unk2;
 	DWORD unk3;
 };

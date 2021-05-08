@@ -16,7 +16,10 @@ void load_texture(const wchar_t* file_name)
 	wchar_t file_name2[260] = { 0 };
 	int len1 = lstrlen(g_path1);
 	lstrcpyW(file_name2, &(file_name[len1]));
-
+	
+	wchar_t* texture_path_name = (wchar_t*)malloc(MAX_PATH * sizeof(wchar_t));
+	lstrcpy(texture_path_name, file_name);
+	AVP_TEXTURES[g_i].path = texture_path_name;
 
 	wchar_t* str1 = std::wcschr(file_name2, L'.');
 	int len3 = lstrlen(str1);

@@ -4,6 +4,7 @@
 #include "Hash_tree.h"
 #include "Asura_headers.h"
 #include "Console.h"
+#include "umHalf.h"
 
 struct MARE_ENTRY
 {
@@ -49,6 +50,7 @@ extern std::vector <bbox>		g_bboxes;
 extern DWORD g_selected_model_index;
 extern DWORD g_selected_anim_index;
 extern XMMATRIX				g_Matrix_Identity;
+extern avp_texture AVP_TEXTURES[1500];
 
 // Globals
 DWORD g_loaded_mdl_count = 0;
@@ -63,12 +65,21 @@ anim_incremental_info g_anm[2000] = { 0 }; // global animation information.
 XMMATRIX g_axBoneMatrices[128];
 
 DWORD Command_dump_anim(DWORD*);
+DWORD Command_dump_model(DWORD*);
 
 Command cmd_dump_anim = {
 	"dump_anim",
 	CONCMD_RET_ZERO,
 	CONARG_END,
 	Command_dump_anim,
+	nullptr
+};
+
+Command cmd_dump_model = {
+	"dump_model",
+	CONCMD_RET_ZERO,
+	CONARG_END,
+	Command_dump_model,
 	nullptr
 };
 
@@ -1400,6 +1411,32 @@ int Read_MARE(const wchar_t* file_name)
 			curr_mat->texture_diff_id = 0;
 		}
 
+		h_n = search_by_hash(hash_tree_texture, entries_mem[i].Hash2);
+		//dbgprint("Materials", "%x = search_by_hash( %x , %x ) \n", h_n, hash_tree_texture, entries_mem[i].Hash1);
+		if (h_n)
+		{
+			//dbgprint("Materials", "Found match with texture id %d and material hash %x \n", h_n->texture->id, curr_mat->mat_hash);
+			curr_mat->texture_norm_id = h_n->texture->id;
+		}
+		else
+		{
+			dbgprint("Materials", "Not found match with texture hash %x and material hash %x \n", entries_mem[i].Hash2, curr_mat->mat_hash);
+			curr_mat->texture_norm_id = 0;
+		}
+
+		h_n = search_by_hash(hash_tree_texture, entries_mem[i].Hash4);
+		//dbgprint("Materials", "%x = search_by_hash( %x , %x ) \n", h_n, hash_tree_texture, entries_mem[i].Hash1);
+		if (h_n)
+		{
+			//dbgprint("Materials", "Found match with texture id %d and material hash %x \n", h_n->texture->id, curr_mat->mat_hash);
+			curr_mat->texture_alpha_id = h_n->texture->id;
+		}
+		else
+		{
+			dbgprint("Materials", "Not found match with texture hash %x and material hash %x \n", entries_mem[i].Hash4, curr_mat->mat_hash);
+			curr_mat->texture_alpha_id = 0;
+		}
+
 		add_hash_and_mat(curr_mat, curr_mat->mat_hash);
 		i++;
 	}
@@ -1429,4 +1466,341 @@ int Read_materials(const wchar_t* MARE_folder_path)
 
 	FindClose(hFind);
 	return 1;
+}
+
+DWORD Command_dump_model(DWORD* args)
+{
+	DWORD a = 0;
+
+	char* cur_model_name = g_mmi[g_selected_model_index].model_name;
+
+	wchar_t cur_model_name_W[MAX_PATH] = { 0 };
+	mbstowcs(cur_model_name_W, cur_model_name, MAX_PATH);
+
+	wchar_t file_path[MAX_PATH] = { 0 };
+	wchar_t obj_model_name[MAX_PATH];
+	wchar_t mtl_file_name[MAX_PATH];
+
+	wsprintf(file_path, L"%ws\\", g_path1);
+	lstrcat(file_path, cur_model_name_W);
+	//lstrcpy(obj_model_name, cur_model_name_W);
+	//lstrcpy(mtl_file_name, cur_model_name_W);
+	wsprintf(mtl_file_name, L"%ws\\%ws", cur_model_name_W, cur_model_name_W);
+	wsprintf(obj_model_name, L"%ws\\%ws", cur_model_name_W, cur_model_name_W);
+	lstrcat(file_path, L".RSCF");
+	lstrcat(obj_model_name, L".obj");
+	lstrcat(mtl_file_name, L".mtl");
+	CreateDirectory(cur_model_name_W, NULL);
+
+
+	// model file
+	HANDLE f = CreateFileW(file_path, GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	if (GetLastError() != ERROR_SUCCESS)
+	{
+		dbgprint("Models", "Opening file Error: %d\n", GetLastError());
+		return 0;
+	}
+
+	DWORD* asura_header = (DWORD*)malloc(28);
+	READP(asura_header, 28);
+
+	if (*asura_header != (DWORD)'FCSR' || *(asura_header + 5) != (DWORD)0xF)
+	{
+		dbgprint("Models", "Opening file Error: BAD_HEADER (HEADER: %08x Type %02d BytesReaden: %d)\n", *asura_header, *(asura_header + 5), a);
+		CloseHandle(f);
+		return 0;
+	}
+
+	free(asura_header);
+
+	
+
+	char* name_str = (char*)malloc(260);
+	read_padded_str(f, name_str);
+	free(name_str);
+	//dbgprint("Model", "RSCF package name: %s \n", name_str);
+	model_header mdl_header;
+
+
+	if (READ(mdl_header))
+	{
+		//dbgprint("Models", "Model header: mmi_count: %d, Vertexes: %d, Indexes: %d \n", mdl_header.model_mesh_info_count, mdl_header.vertex_count, mdl_header.index_count);
+		if (mdl_header.model_mesh_info_count == 0)
+		{
+			CloseHandle(f);
+			return 0;
+		}
+
+		model_mat_info* mmi_buff = (model_mat_info*)_aligned_malloc(mdl_header.model_mesh_info_count * sizeof(model_mat_info), 16);
+		if (!ReadFile(f, mmi_buff, mdl_header.model_mesh_info_count * sizeof(model_mat_info), &a, NULL))
+		{
+			dbgprint("Models", "Read mmi error: %d \n", GetLastError());
+			CloseHandle(f);
+			return 0;
+		}
+		
+		dbgprint("Models", "%s ------------\n", name_str);
+		for (int i = 0; i < mdl_header.model_mesh_info_count; i++)
+		{
+			model_mat_info* mi = &(mmi_buff[i]);
+
+			dbgprint("Models", "Part%d hash: %08x unk: %08x pts: %d flags: %08x %08x %08x \n", i,
+				mi->mat_hash, mi->unk, mi->points_count, mi->some_flags, mi->unk2, mi->unk3);
+		}
+
+		model_vtx* vertex_buff = (model_vtx*)_aligned_malloc(mdl_header.vertex_count * sizeof(model_vtx), 16);
+		
+		if (!ReadFile(f, vertex_buff, mdl_header.vertex_count * sizeof(model_vtx), &a, NULL))
+		{
+			dbgprint("Models", "Read vertex error: %d \n", GetLastError());
+			CloseHandle(f);
+			return 0;
+		}
+
+
+		// mtl file
+		HANDLE f2 = CreateFileW(mtl_file_name, GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+		if ((GetLastError() != ERROR_SUCCESS) && (GetLastError() != ERROR_ALREADY_EXISTS))
+		{
+			printf("File create error: %d (%ws)\n", GetLastError(), mtl_file_name);
+			CloseHandle(f2);
+			CloseHandle(f);
+			return 1;
+		}
+
+		std::vector<DWORD> used_hashs;
+
+		char material_name[200] = { 0 };
+
+		for (int i = 0; i < mdl_header.model_mesh_info_count; i++)
+		{
+			DWORD mat_hash = mmi_buff[i].mat_hash;
+			if (mmi_buff[i].some_flags & 1) // no need meat chunks
+				continue;
+
+			if (std::find(used_hashs.begin(), used_hashs.end(), mat_hash) != used_hashs.end())
+			{
+				continue;
+			}
+			else
+			{
+				used_hashs.push_back(mat_hash);
+				sprintf(material_name, "newmtl material_%08x \n", mat_hash);
+				WRITEP(material_name, strlen(material_name));
+				WRITEP("Ka 1.000000 1.000000 1.000000 \nKd 1.000000 1.000000 1.000000 \nKs 0.000000 0.000000 0.000000 \nTr 1.000000 \nillum 1 \nNs 0.000000 \n", 128);
+				list_node* ln;
+				if ((ln = search_mat_by_hash(mat_hash)))
+				{
+					if (AVP_TEXTURES[ln->material->texture_diff_id].path)
+					{
+						wchar_t* file_name = wcsrchr(AVP_TEXTURES[ln->material->texture_diff_id].path, L'\\');
+						wchar_t File_dest_dir[260];
+						wsprintf(File_dest_dir, L"%ws\\%ws", cur_model_name_W, file_name + 1);
+						CopyFile(AVP_TEXTURES[ln->material->texture_diff_id].path, File_dest_dir, NULL);
+
+						if (GetLastError())
+						{
+							dbgprint("test_export_obj", "CopyFile Error: %d (%ws to %ws) \n", GetLastError(), AVP_TEXTURES[ln->material->texture_diff_id].path, file_name + 1);
+						}
+						
+
+						char asd2[260];
+						sprintf(asd2, "map_Kd %ws \n", file_name + 1);
+						WRITEP(asd2, strlen(asd2));
+					}
+
+					if (AVP_TEXTURES[ln->material->texture_norm_id].path)
+					{
+						wchar_t* file_name = wcsrchr(AVP_TEXTURES[ln->material->texture_norm_id].path, L'\\');
+						wchar_t File_dest_dir[260];
+						wsprintf(File_dest_dir, L"%ws\\%ws", cur_model_name_W, file_name + 1);
+						CopyFile(AVP_TEXTURES[ln->material->texture_norm_id].path, File_dest_dir, NULL);
+
+						if (GetLastError())
+						{
+							dbgprint("test_export_obj", "CopyFile Error: %d (%ws to %ws) \n", GetLastError(), AVP_TEXTURES[ln->material->texture_diff_id].path, file_name + 1);
+						}
+
+
+						char asd2[260];
+						sprintf(asd2, "map_Bump %ws \n \n", file_name + 1);
+						WRITEP(asd2, strlen(asd2));
+					}
+
+					if (AVP_TEXTURES[ln->material->texture_alpha_id].path && (ln->material->texture_alpha_id != 0))
+					{
+						wchar_t* file_name = wcsrchr(AVP_TEXTURES[ln->material->texture_alpha_id].path, L'\\');
+						wchar_t File_dest_dir[260];
+						wsprintf(File_dest_dir, L"%ws\\%ws", cur_model_name_W, file_name + 1);
+						CopyFile(AVP_TEXTURES[ln->material->texture_alpha_id].path, File_dest_dir, NULL);
+
+						if (GetLastError())
+						{
+							dbgprint("test_export_obj", "CopyFile Error: %d (%ws to %ws) \n", GetLastError(), AVP_TEXTURES[ln->material->texture_diff_id].path, file_name + 1);
+						}
+
+
+						char asd2[260];
+						sprintf(asd2, "map_d %ws \n \n", file_name + 1);
+						WRITEP(asd2, strlen(asd2));
+					}
+				}
+				else
+				{
+					// default texture
+					WRITEP("map_Kd default.dds \n \n", 22);
+				}
+			}
+		}
+
+		CloseHandle(f2);
+
+		// obj file
+		f2 = CreateFileW(obj_model_name, GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+		if ((GetLastError() != ERROR_SUCCESS) && (GetLastError() != ERROR_ALREADY_EXISTS))
+		{
+			printf("File create error: %d (%ws)\n", GetLastError(), obj_model_name);
+			CloseHandle(f2);
+			CloseHandle(f);
+			return 1;
+		}
+
+		WRITEP("# imported from AVP2010ModelViewer \n \n \n \n", 42);
+		WRITEP("# vertexes \ng \n", 15);
+
+		char vtx_str[200] = { 0 };
+
+		for (int i = 0; i < mdl_header.vertex_count; i++)
+		{
+			sprintf(vtx_str, "v %f %f %f \n", vertex_buff[i].Pos.x, vertex_buff[i].Pos.y, vertex_buff[i].Pos.z); // they is negative idk why.
+			WRITEP(vtx_str, strlen(vtx_str));
+		}
+
+		for (int i = 0; i < mdl_header.vertex_count; i++)
+		{
+			float U = (float)(vertex_buff[i].TexCoord1[0]);
+			float V = (float)(vertex_buff[i].TexCoord1[1]);
+			sprintf(vtx_str, "vt %f %f \n", U, 1.0f-V); // U, V texture V again is neg somewhy
+			WRITEP(vtx_str, strlen(vtx_str));
+		}
+
+		for (int i = 0; i < mdl_header.vertex_count; i++)
+		{
+			float X = (float)(vertex_buff[i].Normal[0]);
+			float Y = (float)(vertex_buff[i].Normal[1]);
+			float Z = (float)(vertex_buff[i].Normal[2]);
+			sprintf(vtx_str, "vn %f %f %f \n", X, Y, Z); // Normal
+			WRITEP(vtx_str, strlen(vtx_str));
+		}
+
+		WORD* index_buff = (WORD*)_aligned_malloc(mdl_header.index_count * sizeof(WORD), 16);
+		if (!ReadFile(f, index_buff, mdl_header.index_count * sizeof(WORD), &a, NULL))
+		{
+			dbgprint("Models", "Read indexes error: %d \n", GetLastError());
+			CloseHandle(f2);
+			CloseHandle(f);
+			return 0;
+		}
+
+		char face_str[200] = { 0 };
+		char part_num_str[100] = { 0 };
+		char usemtl_str[100] = { 0 };
+
+		WRITEP("# faces \n\n\n\n", 12);
+
+		int start_index = 0;
+
+		if (mdl_header.vertex_layout)
+		{
+			// TRIANGLE LIST
+			for (int i = 0; i < mdl_header.model_mesh_info_count; i++)
+			{
+				sprintf(part_num_str, "g Part%d \n", i);
+				WRITEP(part_num_str, strlen(part_num_str));
+
+				DWORD mat_hash = mmi_buff[i].mat_hash;
+
+				sprintf(usemtl_str, "usemtl material_%08x \n", mat_hash);
+				WRITEP(usemtl_str, strlen(usemtl_str));
+
+				int end_index = start_index + mmi_buff[i].points_count;
+
+				if (mmi_buff[i].some_flags & 1) // no need meat chunks
+				{
+					start_index += mmi_buff[i].points_count;
+					continue;
+				}
+					
+
+				for (int j = start_index; j < end_index; j += 3)
+				{
+					WORD _1 = index_buff[j + 0] + 1;
+					WORD _2 = index_buff[j + 1] + 1;
+					WORD _3 = index_buff[j + 2] + 1;
+
+
+					sprintf(face_str, "f %d/%d/%d %d/%d/%d %d/%d/%d \n", _1, _1, _1, _2, _2, _2, _3, _3, _3);
+					WRITEP(face_str, strlen(face_str));
+				}
+
+				start_index += mmi_buff[i].points_count;
+			}
+			
+		}
+		else
+		{
+			// TRANGLE STRIP
+
+			for (int i = 0; i < mdl_header.model_mesh_info_count; i++)
+			{
+				sprintf(part_num_str, "g Part%d \n", i);
+				WRITEP(part_num_str, strlen(part_num_str));
+
+				DWORD mat_hash = mmi_buff[i].mat_hash;
+
+				sprintf(usemtl_str, "usemtl material_%08x \n", mat_hash);
+				WRITEP(usemtl_str, strlen(usemtl_str));
+
+				int end_index = start_index + mmi_buff[i].points_count;
+
+				if (mmi_buff[i].some_flags & 1) // no need meat chunks
+				{
+					start_index += mmi_buff[i].points_count;
+					continue;
+				}
+
+				for (int j = start_index; j < end_index - 2; j += 1)
+				{
+					WORD _1 = index_buff[j + 0] + 1;
+					WORD _2 = index_buff[j + 1] + 1;
+					WORD _3 = index_buff[j + 2] + 1;
+					if (j % 2)
+					{
+						sprintf(face_str, "f %d/%d/%d %d/%d/%d %d/%d/%d \n", _1, _1, _1, _3, _3, _3, _2, _2, _2);
+						//sprintf(face_str, "f %d %d %d \n", index_buff[i + 0] + 1, index_buff[i + 2] + 1, index_buff[i + 1] + 1);
+						WRITEP(face_str, strlen(face_str));
+					}
+					else
+					{
+						sprintf(face_str, "f %d/%d/%d %d/%d/%d %d/%d/%d \n", _1, _1, _1, _2, _2, _2, _3, _3, _3);
+						WRITEP(face_str, strlen(face_str));
+					}
+
+				}
+
+				start_index += mmi_buff[i].points_count;
+			}
+
+			
+		}
+		
+		CloseHandle(f2);
+		dbgprint("test_export_obj", "exporting done !!! \n");
+	}
+	CloseHandle(f);
+
+	return 0;
 }

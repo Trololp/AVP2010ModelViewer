@@ -13,6 +13,7 @@
 #include <tchar.h>
 #include <vector>
 #include <algorithm>
+#include "umHalf.h"
 
 using namespace DirectX;
 #pragma comment(lib, "HACKS.lib")
@@ -23,6 +24,8 @@ using namespace DirectX;
 #define SFPC(pos) SetFilePointer(f, pos, 0, FILE_CURRENT)
 #define READ(v) ReadFile(f, &(v), sizeof(v), &a, NULL)
 #define READP(p, n) ReadFile(f, p, n, &a, NULL)
+#define WRITE(v) WriteFile(f2, &(v), sizeof(v), &a, NULL)
+#define WRITEP(p, n) WriteFile(f2, p, n, &a, NULL)
 
 //Defines
 #define NULL_ROT { 0.0f, 0.0f, 0.0f, 1.0f }
@@ -42,8 +45,8 @@ struct model_vtx
 	SHORT BlendWeight[4];
 	SHORT Tangent[4];
 	SHORT Binormal[4];
-	SHORT Normal[4];
-	XMFLOAT2 TexCoord1;
+	half Normal[4];
+	half TexCoord1[4];
 	float TextCoord2;
 };
 
@@ -52,7 +55,7 @@ typedef struct
 	DWORD id = 0;
 	DWORD hash = 0;
 	ID3D11ShaderResourceView* pSRView = nullptr;
-	char* path = nullptr;
+	wchar_t* path = nullptr;
 } avp_texture;
 
 struct Material
