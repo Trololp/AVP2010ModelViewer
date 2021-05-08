@@ -29,3 +29,4 @@ my problem with linking. find and delete in `AVP2010MapViewer.h` this stroke `#p
    key 'space' will pause/unpause animation
    ### Console commands
    'dump_anim' - debug feature. dumps selected animation into `debug.txt`
+   'dump_model' - export model into folder with model viewer. (format  (Wavefront) .obj)
