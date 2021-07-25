@@ -2,6 +2,8 @@
 Model viewer for a game "Aliens versus Predator (2010)"
 AVP2010ModelViewer is fork of AVP2010MapViewer that focuses on models, instead of map. Allow see animations.
 
+![image](https://github.com/Trololp/AVP2010ModelViewer/blob/main/preview.png)
+
 ## Installation
 
 Make sure your computer support DirectX 11. Download [last release v0.6](https://github.com/Trololp/AVP2010ModelViewer/releases/tag/v0.6). unpack zip files into new folder. done.
