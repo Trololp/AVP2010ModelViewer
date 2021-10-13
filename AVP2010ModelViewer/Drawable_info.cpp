@@ -36,7 +36,7 @@ void Reqursive_update_lines_skeleton(model_skeleton* skl, DWORD index, XMVECTOR 
 	int i = 1;
 	do
 	{
-		if (skl->pBones[i].num == index)
+		if (skl->pBones[i].parent_bone_id == index)
 			Reqursive_update_lines_skeleton(skl, i, pos, skl_lines);
 		i++;
 	} while (i < skl->amount_bones);
@@ -98,7 +98,7 @@ void Reqursive_make_lines_skeleton(model_skeleton* skl, DWORD index, XMVECTOR pr
 	int i = 1;
 	do
 	{
-		if (skl->pBones[i].num == index)
+		if (skl->pBones[i].parent_bone_id == index)
 			Reqursive_make_lines_skeleton(skl, i, pos, skl_lines);
 		i++;
 	} while (i < skl->amount_bones);

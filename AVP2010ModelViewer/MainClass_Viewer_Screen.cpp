@@ -66,7 +66,10 @@ ID3D11InputLayout*      g_pVertexLayout_s = nullptr;
 ID3D11Buffer*           g_pConstantBuffer = nullptr;
 ID3D11RasterizerState*  g_Env_RS = nullptr;
 ID3D11RasterizerState*  g_Wireframe_RS = nullptr;
-ID3D11DepthStencilState*	g_pDSState = nullptr;
+ID3D11DepthStencilState*	g_pDSState_normal = nullptr;
+
+ID3D11DepthStencilState*	g_pDSState_Zbuffer_disabled = nullptr;
+
 ID3D11DepthStencilView* g_pDSV = nullptr;
 ID3D11Texture2D*		g_pDepthStencilBuffer = nullptr;
 ID3D11ShaderResourceView* g_pDefaultTexture = nullptr;
@@ -433,14 +436,36 @@ HRESULT InitDevice()
 	DSDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
 	DSDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
-	hr = g_pd3dDevice->CreateDepthStencilState(&DSDesc, &g_pDSState);
+	hr = g_pd3dDevice->CreateDepthStencilState(&DSDesc, &g_pDSState_normal);
 	if (FAILED(hr))
 	{
 		dbgprint("Init", "CreateDepthStencilState failed : %d\n", hr);
 		return hr;
 	}
 
-	g_pImmediateContext->OMSetDepthStencilState(g_pDSState, 1);
+	DSDesc.DepthEnable = FALSE;
+	DSDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	DSDesc.DepthFunc = D3D11_COMPARISON_LESS;
+	DSDesc.StencilEnable = FALSE;
+	DSDesc.StencilReadMask = 0xFF;
+	DSDesc.StencilWriteMask = 0xFF;
+	DSDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	DSDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	DSDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	DSDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	DSDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	DSDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	DSDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	DSDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+	hr = g_pd3dDevice->CreateDepthStencilState(&DSDesc, &g_pDSState_Zbuffer_disabled);
+	if (FAILED(hr))
+	{
+		dbgprint("Init", "CreateDepthStencilState Zbuffer disabled failed : %d\n", hr);
+		return hr;
+	}
+
+	g_pImmediateContext->OMSetDepthStencilState(g_pDSState_normal, 1);
 	D3D11_DEPTH_STENCIL_VIEW_DESC DSVdesc;
 	ZeroMemory(&DSVdesc, sizeof(DSVdesc));
 
@@ -522,8 +547,6 @@ HRESULT InitDevice()
 	hash_tree_texture->smaller = nullptr;
 	hash_tree_texture->texture = nullptr;
 
-	
-
 	if (g_path1)
 	{
 		lstrcpyW(Resource_str, g_path1);
@@ -601,12 +624,12 @@ HRESULT InitDevice()
 		exit(0);
 	}
 
-	for (int i = 0; i < g_loaded_mdl_count; i++)
+	for (UINT i = 0; i < g_loaded_mdl_count; i++)
 	{
 		g_model_names[i] = g_mmi[i].model_name;
 	}
 
-	for (int i = 0; i < g_loaded_anim_count; i++)
+	for (UINT i = 0; i < g_loaded_anim_count; i++)
 	{
 		g_anim_names[i] = g_anm[i].anim_name;
 	}
@@ -791,7 +814,7 @@ void Render()
 {
 	// Constant FPS is 60
 
-	g_pImmediateContext->OMSetDepthStencilState(g_pDSState, 1);
+	g_pImmediateContext->OMSetDepthStencilState(g_pDSState_normal, 1);
 	g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDSV);
 	g_pImmediateContext->RSSetState(g_Env_RS);
 	g_pImmediateContext->OMSetBlendState(g_pBlendStateNoBlend, 0, 0xFFFFFFFF);
@@ -859,6 +882,24 @@ void Render()
 
 	g_pImmediateContext->Unmap(g_pConstantBuffer, 0);
 
+	/*
+	g_pImmediateContext->VSSetShader(g_pVertexShader_s, nullptr, 0);
+	g_pImmediateContext->PSSetShader(g_pPixelShader_s, nullptr, 0);
+	g_pImmediateContext->IASetInputLayout(g_pVertexLayout_s);
+	//g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+	g_pImmediateContext->IASetIndexBuffer(NULL, DXGI_FORMAT_R16_UINT, 0);
+	g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	UINT stride = sizeof(simple_vertex);
+	UINT offset = 0;
+
+	if (Show_info())
+	{
+		if (Current_mmi->skl && g_show_skl)
+		{
+			g_pImmediateContext->IASetVertexBuffers(0, 1, &(Current_mmi->dynamic_skeleton_buffer), &stride, &offset);
+			g_pImmediateContext->Draw(Current_mmi->points_skeleton, 0);
+		}
+	}*/
 
 	g_pImmediateContext->VSSetShader(g_pVertexShader_m, nullptr, 0);
 	g_pImmediateContext->PSSetShader(g_pPixelShader_m, nullptr, 0);
@@ -919,7 +960,7 @@ void Render()
 	g_pImmediateContext->VSSetShader(g_pVertexShader_s, nullptr, 0);
 	g_pImmediateContext->PSSetShader(g_pPixelShader_s, nullptr, 0);
 	g_pImmediateContext->IASetInputLayout(g_pVertexLayout_s);
-	g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+	//g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
 	g_pImmediateContext->IASetIndexBuffer(NULL, DXGI_FORMAT_R16_UINT, 0);
 	g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	stride = sizeof(simple_vertex);
@@ -934,6 +975,24 @@ void Render()
 		g_pImmediateContext->Draw(g_points_stuff, 0);// Draw stuff (bboxes)
 	}
 
+	g_pImmediateContext->OMSetDepthStencilState(g_pDSState_Zbuffer_disabled, 1);
+
+	if (Show_info())
+	{
+		if (Current_mmi->skl && g_show_skl)
+		{
+			g_pImmediateContext->IASetVertexBuffers(0, 1, &(Current_mmi->dynamic_skeleton_buffer), &stride, &offset);
+			g_pImmediateContext->Draw(Current_mmi->points_skeleton, 0);
+		}
+
+		if (Current_mmi->static_HSBB_buffer && g_show_HSSB)
+		{
+			g_pImmediateContext->IASetVertexBuffers(0, 1, &(Current_mmi->static_HSBB_buffer), &stride, &offset);
+			g_pImmediateContext->Draw(Current_mmi->points_HSBB, 0);
+		}
+	}
+
+	g_pImmediateContext->OMSetDepthStencilState(g_pDSState_normal, 1);
 
 	m_spriteBatch->Begin();
 	XMVECTOR origin;
@@ -960,7 +1019,7 @@ void Render()
 			for (int i = 0; i < Current_mmi->skl->amount_bones; i++)
 			{
 				skeleton_bone* pSklNode = &(Current_mmi->skl->pBones[i]);
-				DWORD index = pSklNode->num;
+				DWORD index = pSklNode->parent_bone_id;
 				XMVECTOR pos = pSklNode->bone_model_matrix.r[3];
 				pos = XMVector3Transform(pos, g_axBoneMatrices[index]);
 
@@ -994,6 +1053,21 @@ void Render()
 		{
 			sprintf(g_model_counter, "Model: %d/%d\nBones: %d \n",
 				g_selected_model_index, g_loaded_mdl_count, Current_mmi->skl->amount_bones);
+
+			if (Current_anim)
+			{
+				origin = m_font->MeasureString((const char*)(Current_anim->anim_name)) / 2.f;
+				m_font->DrawString(m_spriteBatch.get(), (const char*)(Current_anim->anim_name), g_anim_name_pos, Colors::White, 0.f, origin);
+
+				sprintf(g_anim_info, "Anim: %d/%d\n\nBones required: %d \nTotal time: %f \nType: %08x",
+					g_selected_anim_index, g_loaded_anim_count, Current_anim->bones_count, Current_anim->total_time, Current_anim->anim->type);
+
+
+				origin = m_font->MeasureString((const char*)(g_anim_info)) / 2.f;
+				m_font->DrawString(m_spriteBatch.get(), (const char*)(g_anim_info), g_DataFontPos, Colors::White, 0.f, origin, { (0.5f, 0.5f) });
+
+			}
+
 		}
 		else
 		{
@@ -1003,47 +1077,12 @@ void Render()
 		origin = m_font->MeasureString((const char*)(g_model_counter)) / 2.f;
 		m_font->DrawString(m_spriteBatch.get(), (const char*)(g_model_counter), g_Model_counter_font_pos, Colors::White, 0.f, origin, { (0.5f, 0.5f) });
 
-		if (Current_anim)
-		{
-			origin = m_font->MeasureString((const char*)(Current_anim->anim_name)) / 2.f;
-			m_font->DrawString(m_spriteBatch.get(), (const char*)(Current_anim->anim_name), g_anim_name_pos, Colors::White, 0.f, origin);
-
-			sprintf(g_anim_info, "Anim: %d/%d\n\nBones required: %d \nTotal time: %f \nType: %08x",
-				g_selected_anim_index, g_loaded_anim_count, Current_anim->bones_count, Current_anim->total_time, Current_anim->anim->type);
-			
-
-			origin = m_font->MeasureString((const char*)(g_anim_info)) / 2.f;
-			m_font->DrawString(m_spriteBatch.get(), (const char*)(g_anim_info), g_DataFontPos, Colors::White, 0.f, origin, { (0.5f, 0.5f) });
-
-		}
+		
 	}
 
 	m_spriteBatch->End();
 
-	g_pImmediateContext->VSSetShader(g_pVertexShader_s, nullptr, 0);
-	g_pImmediateContext->PSSetShader(g_pPixelShader_s, nullptr, 0);
-	g_pImmediateContext->IASetInputLayout(g_pVertexLayout_s);
-	g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
-	g_pImmediateContext->IASetIndexBuffer(NULL, DXGI_FORMAT_R16_UINT, 0);
-	g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-	stride = sizeof(simple_vertex);
-	offset = 0;
-
-
-	if (Show_info())
-	{
-		if (Current_mmi->skl && g_show_skl)
-		{
-			g_pImmediateContext->IASetVertexBuffers(0, 1, &(Current_mmi->dynamic_skeleton_buffer), &stride, &offset);
-			g_pImmediateContext->Draw(Current_mmi->points_skeleton, 0);
-		}
-
-		if (Current_mmi->static_HSBB_buffer && g_show_HSSB)
-		{
-			g_pImmediateContext->IASetVertexBuffers(0, 1, &(Current_mmi->static_HSBB_buffer), &stride, &offset);
-			g_pImmediateContext->Draw(Current_mmi->points_HSBB, 0);
-		}
-	}
+	
 
 	g_pSwapChain->Present(1, 0);
 	g_framecount++;

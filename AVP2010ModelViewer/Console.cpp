@@ -272,6 +272,7 @@ VIEWER_CONSOLE_ERROR_TYPE Console::Detect_and_execute_command()
 			VIEWER_CONSOLE_ARG argtype = (pArgschema) ? pArgschema[0] : CONARG_END;
 			char* curr_p = CurrentLine + cmd_name_size;
 			char* end_p = CurrentLine + 255;
+			//char* str_arg_p = CurrentLine;
 			int i = 0;
 			
 
@@ -299,8 +300,8 @@ VIEWER_CONSOLE_ERROR_TYPE Console::Detect_and_execute_command()
 					((float*)args)[0] = (float)strtof(curr_p, NULL);
 					break;
 				case CONARG_STR:
-					//str_p = strchr(CurrentLine + cmd_name_size + 1, ' '); // to do make str arg parsing
-					//
+					//str_arg_p = strrchr(CurrentLine, ' ');
+					((char**)args)[0] = curr_p;
 					break;
 				default:
 					dbgprint("Console", "bug in ARG parse %d \n", (*it)->argtype);

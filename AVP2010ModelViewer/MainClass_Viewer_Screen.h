@@ -43,11 +43,11 @@ struct model_vtx
 	XMFLOAT4 Pos;
 	UINT8 BlendIndices[4];
 	SHORT BlendWeight[4];
-	SHORT Tangent[4];
-	SHORT Binormal[4];
+	half Tangent[4];
+	half Binormal[4];
 	half Normal[4];
 	half TexCoord1[4];
-	float TextCoord2;
+	float TexCoord2;
 };
 
 typedef struct
@@ -62,10 +62,11 @@ struct Material
 {
 	DWORD mat_hash;
 	DWORD mat_num;
-	DWORD texture_diff_id = 0;
-	DWORD texture_norm_id = 0;
-	DWORD texture_diff2_id = 0;
-	DWORD texture_alpha_id = 0;
+	DWORD texture_diff_id = -1;
+	DWORD texture_norm_id = -1;
+	DWORD texture_spec_id = -1;
+	DWORD texture_alpha_id = -1;
+	DWORD texture_emission_id = -1;
 	bool is_alpha;
 };
 

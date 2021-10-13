@@ -24,8 +24,8 @@ struct model_mat_info
 
 struct skeleton_bone
 {
-	DWORD num;
-	DWORD parent_bone;
+	DWORD parent_bone_id;
+	DWORD unk_bone;
 	char* name;
 	XMFLOAT3 rel_pos;
 	XMFLOAT4 rel_rot;
@@ -132,8 +132,8 @@ int Read_HANMs(const wchar_t* folder_path);
 void Skeleton_setup_bone_anim_matrices();
 int Model_anim_update_init(model_skeleton* skl, model_skeleton_anim* anim, float t);
 int Model_anim_update(model_skeleton* skl, model_skeleton_anim* anim, float t, DWORD index, XMMATRIX* M_anim_prev);
-int Model_anim_update_with_frame(model_skeleton* skl, model_skeleton_anim* anim, int frame, DWORD index, XMMATRIX* M_prev);
-int Model_anim_update_with_frame_init(model_skeleton* skl, model_skeleton_anim* anim, int frame);
+//int Model_anim_update_with_frame(model_skeleton* skl, model_skeleton_anim* anim, int frame, DWORD index, XMMATRIX* M_prev);
+//int Model_anim_update_with_frame_init(model_skeleton* skl, model_skeleton_anim* anim, int frame);
 int Read_HSBBs(const wchar_t* folder_path);
 int Read_HMPTs(const wchar_t* folder_path);
 void Update_Incremental_MMI_HMPT();
