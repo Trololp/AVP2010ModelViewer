@@ -10,7 +10,7 @@ Make sure your computer support DirectX 11. Download [last release v0.7.1](https
 ## Development
 I use **Visual Studio 2017**. Used **Microsoft DirectX SDK (June 2010)**. also you need **directXTK** for text on a screen (this was get from Nuget). There file in 
 [usefull_stuff](https://github.com/Trololp/AVP2010MapViewer/tree/main/usefull_stuff) folder named **HACKS.lib** dont scare its is d3dcompiler v47 lib. this is solving
-my problem with linking. find and delete in `AVP2010MapViewer.h` this stroke `#pragma comment(lib, "HACKS.lib")` if all compiling good.
+my problem with linking.
 
 ## Usage
 
