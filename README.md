@@ -6,7 +6,7 @@ AVP2010ModelViewer is fork of AVP2010MapViewer that focuses on models, instead o
 
 ## Installation
 
-Make sure your computer support DirectX 11. Download [last release v0.6](https://github.com/Trololp/AVP2010ModelViewer/releases/tag/v0.7.1). unpack zip files into new folder. done.
+Make sure your computer support DirectX 11. Download [last release v0.7.1](https://github.com/Trololp/AVP2010ModelViewer/releases/tag/v0.7.1). unpack zip files into new folder. done.
 ## Development
 I use **Visual Studio 2017**. Used **Microsoft DirectX SDK (June 2010)**. also you need **directXTK** for text on a screen (this was get from Nuget). There file in 
 [usefull_stuff](https://github.com/Trololp/AVP2010MapViewer/tree/main/usefull_stuff) folder named **HACKS.lib** dont scare its is d3dcompiler v47 lib. this is solving
