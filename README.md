@@ -1,4 +1,5 @@
 # AVP2010ModelViewer
+*This project will no longer be maintained*
 Model viewer for a game "Aliens versus Predator (2010)"
 AVP2010ModelViewer is fork of AVP2010MapViewer that focuses on models, instead of map. Allow see animations.
 
